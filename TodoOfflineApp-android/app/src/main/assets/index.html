@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>To Do List</title>
+  <meta name="description" content="Single‑file to‑do app. Background #19454B with white outline vector of Moomin & Snufkin. White task bubbles, black Calibri text." />
+  <style>
+    :root {
+      --teal: #19454B;   /* background */
+      --onTeal: #ffffff; /* white */
+      --ink: #000000;    /* black */
+      --mutedOnTeal: rgba(255,255,255,.75);
+      --ring: rgba(255,255,255,.28);
+      --borderLight: rgba(255,255,255,.18);
+      --shadow: 0 10px 28px rgba(0,0,0,.25);
+      --radius-lg: 18px;
+      --radius-sm: 12px;
+    }
+
+    html, body { height:100%; margin:0; background:#19454B; color:#ffffff; font-family: Calibri, "Segoe UI", Arial, Helvetica, sans-serif; }
+
+    /* Background: white outline vector of Moomin & Snufkin */
+    .bg-wrap{ position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none; }
+    .bg{ width:130%; height:130%; opacity:.18; transform: translate(-8%, -6%); }
+
+    .app { height: 100dvh; display:grid; grid-template-rows: auto 1fr auto; max-width: 860px; margin: 0 auto; position:relative; }
+
+    /* Header */
+    .header { padding: 16px 18px; border-bottom: 1px solid var(--borderLight); display:flex; align-items:center; gap:12px; position:sticky; top:0; background: linear-gradient(180deg, rgba(25,69,75,.9), rgba(25,69,75,.6)); backdrop-filter: blur(2px); z-index:5; }
+    .logo { width: 14px; height: 14px; border-radius: 4px; background: var(--onTeal); box-shadow: 0 0 0 4px rgba(255,255,255,.12); }
+    .title { font-size: 18px; font-weight: 800; letter-spacing:.2px; color: var(--onTeal); }
+    .count { margin-left:auto; font-size:12px; color: var(--mutedOnTeal); }
+
+    /* List area */
+    .list { padding: 20px 16px 110px; overflow:auto; }
+
+    /* White bubbles (cards) with black text */
+    .item { display:grid; grid-template-columns: 1fr auto; gap:10px; margin: 12px 0; align-items:start; }
+    .meta { grid-column:1 / -1; font-size:12px; color: var(--mutedOnTeal); margin: 0 4px 6px; }
+    .bubble { background:#ffffff; color:#000000; border:1px solid rgba(0,0,0,.06); border-radius: 18px; padding: 12px 14px; box-shadow: 0 10px 28px rgba(0,0,0,.20); white-space: pre-wrap; word-wrap: break-word; }
+    .bubble.completed { opacity:.9; text-decoration: line-through; text-decoration-thickness:2px; text-decoration-color: rgba(0,0,0,.8); }
+
+    /* Kebab menu */
+    .menu-wrap { position:relative; }
+    .kebab { width: 36px; height: 36px; border: 1px solid var(--borderLight); background: rgba(255,255,255,.06); color: var(--onTeal); border-radius: 12px; cursor: pointer; display:grid; place-items:center; }
+    .kebab:hover { background: rgba(255,255,255,.12); }
+    .kebab:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+    .kebab svg { width:18px; height:18px; fill: var(--onTeal); opacity:.9; }
+
+    .menu { position:absolute; top:40px; right:0; background:#ffffff; color:#000; border:1px solid rgba(0,0,0,.08); border-radius: 12px; min-width: 170px; box-shadow: 0 18px 36px rgba(0,0,0,.28); padding:6px; display:none; z-index:10; }
+    .menu.open { display:block; }
+    .menu button { all:unset; display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:8px; cursor:pointer; color:#000; font-weight:600; }
+    .menu button:hover { background:#f3f7f7; }
+    .menu .danger { color:#b00020; }
+
+    /* Composer */
+    .composer { position: sticky; bottom:0; background: linear-gradient(180deg, rgba(25,69,75,0), rgba(25,69,75,.95) 18px); }
+    .composer-inner { display:grid; grid-template-columns:1fr auto; gap:10px; padding: 12px 16px 18px; border-top: 1px solid var(--borderLight); }
+    .input { width:100%; font:inherit; padding: 12px 14px; border:1px solid rgba(255,255,255,.35); background:#ffffff; color:#000; border-radius: 12px; outline:none; }
+    .input:focus { box-shadow: 0 0 0 3px rgba(255,255,255,.3); }
+    .btn { background: #ffffff; color:#000; border:none; cursor:pointer; padding: 12px 16px; border-radius: 12px; font-weight: 800; letter-spacing:.2px; box-shadow: 0 8px 20px rgba(0,0,0,.25); }
+    .btn:active { transform: translateY(1px); }
+    .btn:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+
+    .empty { text-align:center; color: var(--mutedOnTeal); margin-top: 24px; font-size: 14px; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip: rect(0,0,0,0); white-space:nowrap; border:0; }
+
+    @media (max-width: 520px) { .list{padding:16px 12px 96px} .composer-inner{gap:8px; padding:10px 12px 16px} }
+  .bg-img{position:fixed;inset:0;object-fit:contain;object-position:center bottom;opacity:.24;pointer-events:none;z-index:-1;filter:contrast(1) brightness(1.08);} 
+  .bg-overlay{position:fixed;inset:0;z-index:-2;pointer-events:none}
+.bg-overlay::before{content:"";position:absolute;inset:0;background:#19454B;}
+.bg-overlay::after{content:"";position:absolute;inset:0;background-color:transparent;background-repeat:no-repeat;background-position:center bottom;background-image:url('Gemini_Generated_Image_rzrc2jrzrc2jrzrc.png');background-size: auto 50vh;opacity:1;} 
+  </style>
+
+<style>
+  html, body { margin:0; padding:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#F7FAFB; color:#0F172A; }
+  .container { max-width: 680px; margin: 0 auto; padding: 16px; }
+  button, input, textarea { font-size: 16px; }
+</style>
+</head>
+<body>
+<div class=\"container\">
+  <style id="inline-bg">body{background:#19454B;} body::before{
+  content:""; position:fixed; inset:0; z-index:-1;
+  /* keep the deep teal background */
+  background-color:#19454B;
+  /* use the embedded image already in the file */
+  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABUAAAAMACAIAAABq7Fo6AAADMmlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IG...InjKrwY03NJgGmALH2G0FYdWzGoayYFccrQfdaB0h5Ejd/BjgMsb4SxswjxElrVp...D6oTxCGSwkQHirFIFzapwqhtV9P9EEADy38f6ufMog138SUAAAAAElFTkSuQmCC'); /* keep existing data url prefix to preserve content */
+  background-repeat:no-repeat;
+  background-position:center bottom;
+  /* make the art fit only the bottom half of the screen */
+  background-size:auto 50vh;
+}</style>
+  <!-- Background image (place moomin_bg.png next to this HTML) --><!-- Decorative background SVG: white outline Moomin & Snufkin -->
+  <div class="bg-wrap" aria-hidden="true">
+    <svg class="bg" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+      <g fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Moomin silhouette (left) -->
+        <path d="M210,560 c-30,-80 10,-150 80,-180 c-10,-40 15,-85 65,-95 c35,-7 75,5 95,35 c22,34 15,72 -5,96 c36,8 62,35 67,66 c6,38 -20,76 -63,90 c-32,10 -82,11 -120,2 c-8,30 -47,46 -88,39" />
+        <circle cx="395" cy="358" r="10" />
+        <!-- Snufkin cloak + hat (right) -->
+        <path d="M880,360 l-90,150 l180,0 z" />
+        <path d="M880,300 c-60,0 -120,30 -160,40 c70,10 120,10 160,10 c40,0 90,0 160,-10 c-40,-10 -100,-40 -160,-40 z" />
+        <!-- ground curve -->
+        <path d="M0,720 C300,640 900,640 1200,720" opacity="0.8"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="app" role="application" aria-label="To‑Do — Dark teal with white outline vector">
+    <header class="header">
+      <div class="logo" aria-hidden="true"></div>
+      <div class="title">To‑Do List</div>
+      <div class="count" id="count">0 open · 0 done</div>
+    </header>
+
+    <main id="list" class="list" tabindex="0" aria-label="Task list area"></main>
+
+    <div class="composer" role="region" aria-label="Task composer">
+      <form id="composerForm" class="composer-inner" autocomplete="off">
+        <label class="sr-only" for="taskInput">Type a task</label>
+        <input id="taskInput" class="input" name="task" placeholder="Type a task and press Enter…" />
+        <button class="btn" type="submit" aria-label="Add task">Submit</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Dark teal version with white bubbles + outline vector background
+    const $list = document.getElementById('list');
+    const $form = document.getElementById('composerForm');
+    const $input = document.getElementById('taskInput');
+    const $count = document.getElementById('count');
+    const LS_KEY = 'todo.moomin.snufkin.outline.v1';
+
+    /** @typedef {{ id:string, text:string, createdAt:number, completed:boolean }} Task */
+    /** @type {Task[]} */
+    let tasks = [];
+
+    const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+    const fmtTime = (ts) => new Intl.DateTimeFormat(undefined,{year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(ts);
+    const escapeHTML = (s) => s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+    const save = () => localStorage.setItem(LS_KEY, JSON.stringify(tasks));
+    const load = () => { try { tasks = JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch { tasks = []; } };
+
+    function updateCount(){ const open = tasks.filter(t=>!t.completed).length; const done = tasks.length-open; $count.textContent = `${open} open · ${done} done`; }
+
+    function render(){
+      if(!tasks.length){ $list.innerHTML = '<p class="empty">No tasks yet. Add your first task below ✨</p>'; updateCount(); return; }
+      const html = tasks.map(t=>{
+        const date = fmtTime(t.createdAt);
+        const safe = escapeHTML(t.text.trim());
+        return `
+          <article class="item" data-id="${t.id}">
+            <div class="meta">${date}</div>
+            <div class="bubble ${t.completed ? 'completed' : ''}">${safe || '<em>(empty task)</em>'}</div>
+            <div class="menu-wrap">
+              <button class="kebab" aria-haspopup="true" aria-expanded="false" aria-label="Open actions menu">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+              </button>
+              <div class="menu" role="menu">
+                <button data-action="edit" role="menuitem">✏️ Edit</button>
+                <button data-action="toggle" role="menuitem">${t.completed ? '↩️ Undo complete' : '✅ Complete'}</button>
+                <button class="danger" data-action="delete" role="menuitem">🗑️ Delete</button>
+              </div>
+            </div>
+          </article>`;
+      }).join('');
+      $list.innerHTML = html;
+      $list.scrollTo({ top: $list.scrollHeight, behavior: 'smooth' });
+
+      // kebab
+      document.querySelectorAll('.kebab').forEach(btn=>{
+        btn.addEventListener('click',e=>{
+          const wrap = e.currentTarget.closest('.menu-wrap');
+          const menu = wrap.querySelector('.menu');
+          const expanded = e.currentTarget.getAttribute('aria-expanded')==='true';
+          document.querySelectorAll('.menu').forEach(m=>m.classList.remove('open'));
+          document.querySelectorAll('.kebab').forEach(k=>k.setAttribute('aria-expanded','false'));
+          if(!expanded){ menu.classList.add('open'); e.currentTarget.setAttribute('aria-expanded','true'); }
+        });
+      });
+      window.addEventListener('click',(evt)=>{ if(!evt.target.closest('.menu-wrap')){ document.querySelectorAll('.menu').forEach(m=>m.classList.remove('open')); document.querySelectorAll('.kebab').forEach(k=>k.setAttribute('aria-expanded','false')); } }, { once:true });
+
+      document.querySelectorAll('.menu button').forEach(btn=>{
+        btn.addEventListener('click',e=>{
+          const action = e.currentTarget.getAttribute('data-action');
+          const id = e.currentTarget.closest('.item').dataset.id;
+          if(action==='edit') onEdit(id);
+          if(action==='toggle') onToggle(id);
+          if(action==='delete') onDelete(id);
+        });
+      });
+      updateCount();
+    }
+
+    function addTask(text){ tasks.push({ id:uid(), text:text.trim(), createdAt:Date.now(), completed:false }); save(); render(); }
+    function onToggle(id){ const t = tasks.find(x=>x.id===id); if(t){ t.completed=!t.completed; save(); render(); } }
+    function onDelete(id){ tasks = tasks.filter(x=>x.id!==id); save(); render(); }
+    function onEdit(id){ const t = tasks.find(x=>x.id===id); if(!t) return; const next = prompt('Edit task:', t.text); if(next===null) return; t.text = String(next).trim(); save(); render(); }
+
+    $form.addEventListener('submit', (e)=>{ e.preventDefault(); const val = $input.value.trim(); if(!val){ $input.focus(); return; } addTask(val); $input.value=''; $input.focus(); });
+
+    load(); render();
+  </script>
+</div></body>
+</html>
