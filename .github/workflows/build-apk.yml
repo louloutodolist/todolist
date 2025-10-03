@@ -12,35 +12,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # If the project is inside TodoOfflineApp-android/, move it up to repo root
       - name: Bring project to repo root
         shell: bash
         run: |
           set -e
-          echo "Initial files:"
+          echo "Initial files at repo root:"
           ls -la
-
-          # If the project is nested (like TodoOfflineApp-android/), move it up
           if [ -d "TodoOfflineApp-android" ]; then
-            echo "Moving TodoOfflineApp-android/* to repo root..."
             shopt -s dotglob
             mv TodoOfflineApp-android/* .
             rm -rf TodoOfflineApp-android
           fi
-
-          # (Optional) Also handle the earlier folder name just in case
-          if [ -d "TodoOfflineApp" ]; then
-            echo "Moving TodoOfflineApp/* to repo root..."
-            shopt -s dotglob
-            mv TodoOfflineApp/* .
-            rm -rf TodoOfflineApp
-          fi
-
-          echo "After move:"
+          echo "After move to root:"
           ls -la
-
-          # Sanity check: we must have a Gradle project at root now
+          # Sanity check that a Gradle project exists
           if [ ! -f "settings.gradle.kts" ] && [ ! -f "settings.gradle" ]; then
             echo "ERROR: settings.gradle(.kts) not found at repo root."
+            exit 1
+          fi
+
+      - name: Show gradle.properties (must contain AndroidX flags)
+        run: |
+          if [ -f gradle.properties ]; then
+            echo "===== gradle.properties ====="
+            cat gradle.properties
+          else
+            echo "gradle.properties is missing at repo root!"
             exit 1
           fi
 
@@ -66,7 +64,7 @@ jobs:
         with:
           gradle-version: "8.7"
 
-      - name: Generate Gradle wrapper if missing
+      - name: Ensure wrapper & print versions
         run: |
           if [ ! -f gradlew ]; then
             gradle wrapper --gradle-version 8.7
@@ -75,7 +73,7 @@ jobs:
           ./gradlew --version
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew clean assembleDebug --no-daemon
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
