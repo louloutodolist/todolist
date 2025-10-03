@@ -12,26 +12,35 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Unzip the project you uploaded, if present
-      - name: Unzip project (if ZIP is present)
+      - name: Bring project to repo root
+        shell: bash
         run: |
           set -e
-          if [ -f "TodoOfflineApp-android.zip" ]; then
-            unzip -q "TodoOfflineApp-android.zip"
+          echo "Initial files:"
+          ls -la
+
+          # If the project is nested (like TodoOfflineApp-android/), move it up
+          if [ -d "TodoOfflineApp-android" ]; then
+            echo "Moving TodoOfflineApp-android/* to repo root..."
+            shopt -s dotglob
+            mv TodoOfflineApp-android/* .
+            rm -rf TodoOfflineApp-android
           fi
-          # If the folder 'TodoOfflineApp' exists, move its contents to repo root
+
+          # (Optional) Also handle the earlier folder name just in case
           if [ -d "TodoOfflineApp" ]; then
+            echo "Moving TodoOfflineApp/* to repo root..."
             shopt -s dotglob
             mv TodoOfflineApp/* .
             rm -rf TodoOfflineApp
           fi
-          echo "Repo root after unzip:"
+
+          echo "After move:"
           ls -la
 
-          # Sanity check: we must have a Gradle project at root
+          # Sanity check: we must have a Gradle project at root now
           if [ ! -f "settings.gradle.kts" ] && [ ! -f "settings.gradle" ]; then
             echo "ERROR: settings.gradle(.kts) not found at repo root."
-            echo "Ensure the project files (app/, settings.gradle.kts, build.gradle.kts) are at the top level."
             exit 1
           fi
 
@@ -49,16 +58,15 @@ jobs:
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Create local.properties (point Gradle to SDK)
+      - name: Point Gradle to SDK
         run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
 
-      # ✅ Provision Gradle without SDKMAN; the action downloads Gradle for us
       - name: Set up Gradle 8.7
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: "8.7"
 
-      - name: Generate Gradle wrapper (if missing)
+      - name: Generate Gradle wrapper if missing
         run: |
           if [ ! -f gradlew ]; then
             gradle wrapper --gradle-version 8.7
