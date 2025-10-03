@@ -12,15 +12,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Unzip the project you uploaded, if present
       - name: Unzip project (if ZIP is present)
         run: |
-          if [ -f TodoOfflineApp-android.zip ]; then
-            unzip -q TodoOfflineApp-android.zip
+          set -e
+          if [ -f "TodoOfflineApp-android.zip" ]; then
+            unzip -q "TodoOfflineApp-android.zip"
           fi
-          if [ -d TodoOfflineApp ]; then
+          # If the folder 'TodoOfflineApp' exists, move its contents to repo root
+          if [ -d "TodoOfflineApp" ]; then
+            shopt -s dotglob
             mv TodoOfflineApp/* .
+            rm -rf TodoOfflineApp
           fi
+          echo "Repo root after unzip:"
           ls -la
+
+          # Sanity check: we must have a Gradle project at root
+          if [ ! -f "settings.gradle.kts" ] && [ ! -f "settings.gradle" ]; then
+            echo "ERROR: settings.gradle(.kts) not found at repo root."
+            echo "Ensure the project files (app/, settings.gradle.kts, build.gradle.kts) are at the top level."
+            exit 1
+          fi
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -31,24 +44,26 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install SDK components
+      - name: Accept licenses + install SDK components
         run: |
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Create local.properties
+      - name: Create local.properties (point Gradle to SDK)
         run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
 
-      # ✅ FIXED SECTION
-      - name: Ensure Gradle wrapper (download Gradle directly if missing)
+      # ✅ Provision Gradle without SDKMAN; the action downloads Gradle for us
+      - name: Set up Gradle 8.7
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: "8.7"
+
+      - name: Generate Gradle wrapper (if missing)
         run: |
           if [ ! -f gradlew ]; then
-            echo "Gradle wrapper not found. Downloading Gradle..."
-            wget https://services.gradle.org/distributions/gradle-8.7-bin.zip -O gradle.zip
-            unzip -q gradle.zip -d gradle-dir
-            gradle-dir/gradle-8.7/bin/gradle wrapper
+            gradle wrapper --gradle-version 8.7
           fi
-          chmod +x ./gradlew
+          chmod +x gradlew
           ./gradlew --version
 
       - name: Build Debug APK
